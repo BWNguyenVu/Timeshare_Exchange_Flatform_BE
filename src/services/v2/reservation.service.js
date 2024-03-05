@@ -108,7 +108,8 @@ class ReservationService {
             const countExchange = await ReservationModel.countDocuments({ timeshareId: timeshareId, type: 'exchange' });
             const countRent = await ReservationModel.countDocuments({ timeshareId: timeshareId, type: 'rent' });
             console.log(count);
-            
+            console.log(exchangeData);
+
             console.log('Current owner:', timeshare.current_owner.email);
             const to = timeshare.current_owner.email;
     
@@ -196,10 +197,6 @@ class ReservationService {
             throw new Error(error.message);
         }
     }
-    
-    
 }
-
-
 
 module.exports = new ReservationService;

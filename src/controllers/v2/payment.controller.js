@@ -147,9 +147,10 @@ class PaymentController {
     }
     
 
-    async VNPayReturn(req, res) {
+    async VNPayReturn(req, res, next) {
         try {
-            const { userId } = req.params;
+            const {userId} = req.body;
+
             const vnpayReturn = await paymentServices.VNPayReturn(req, res, userId);
             res.status(StatusCodes.OK).json({
                 status: {

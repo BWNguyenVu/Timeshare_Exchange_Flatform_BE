@@ -9,4 +9,5 @@ router.get('/verify-email', emailController.VerifyEmailVerification);
 router.post('/request-password-reset', emailController.SendPasswordRecoveryEmail);
 router.post('/reset-password', emailController.VerifyPasswordReset);
 
+
 module.exports = router;

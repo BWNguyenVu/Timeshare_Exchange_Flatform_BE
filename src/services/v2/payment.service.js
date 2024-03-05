@@ -9,6 +9,10 @@ const {uploadToS3} = require("../../utils/s3Store");
 const ResortModel = require("../../models/resorts");
 const paypal = require("paypal-rest-sdk");
 const {StatusCodes} = require("http-status-codes");
+const PaymentModel = require('../../models/payments')
+const UserModel = require('../../models/users')
+const ServicePackModel = require('../../models/servicePacks'); // Import model ServicePack
+
 
 class PaymentService {
 
@@ -115,9 +119,7 @@ class PaymentService {
         let secretKey = "OIEUZLVYEHNDVYKFPDOAJXIMTWIDVKJT";
         let vnpUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
         let returnUrl = `http://localhost:3000/payment/${userId}/vnpay_return`;
-
-        // let returnUrl = "http://localhost:8080/api/v2/payment/vnpay_return";
-
+    
         let orderId = moment(date).format('DDHHmmss');
         let amount = req.body.amount;
         let bankCode = req.body.bankCode;
@@ -155,26 +157,27 @@ class PaymentService {
         vnp_Params['vnp_SecureHash'] = signed;
         vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
     
-        const vnpayData = {
-            orderId: orderId,
-            vnp_Version: vnp_Params['vnp_Version'],
-            vnp_Command: vnp_Params['vnp_Command'],
-            vnp_TmnCode: tmnCode,
-            vnp_Locale: locale,
-            vnp_CurrCode: currCode,
-            vnp_TxnRef: orderId,
-            vnp_OrderInfo: 'Thanh toan cho ma GD:' + orderId,
-            vnp_OrderType: vnp_Params['vnp_OrderType'],
-            vnp_Amount: parseFloat(amount), // Assign the original amount here
-            vnp_ReturnUrl: returnUrl,
-            vnp_IpAddr: ipAddr,
-            vnp_CreateDate: createDate,
-            vnp_BankCode: bankCode,
-            vnp_SecureHash: signed,
-            transactionStatus: 'Pending',
-            userId: userId,
-        };
         try {
+            const vnpayData = {
+                orderId: orderId,
+                vnp_Version: vnp_Params['vnp_Version'],
+                vnp_Command: vnp_Params['vnp_Command'],
+                vnp_TmnCode: tmnCode,
+                vnp_Locale: locale,
+                vnp_CurrCode: currCode,
+                vnp_TxnRef: orderId,
+                vnp_OrderInfo: 'Thanh toan cho ma GD:' + orderId,
+                vnp_OrderType: vnp_Params['vnp_OrderType'],
+                vnp_Amount: parseFloat(amount), // Assign the original amount here
+                vnp_ReturnUrl: returnUrl,
+                vnp_IpAddr: ipAddr,
+                vnp_CreateDate: createDate,
+                vnp_BankCode: bankCode,
+                vnp_SecureHash: signed,
+                transactionStatus: 'Pending',
+                userId: userId,
+            };
+    
             const vnpay = new PaymentModel(vnpayData);
             await vnpay.save();
         } catch (error) {
@@ -183,12 +186,13 @@ class PaymentService {
         return vnpUrl;
     }
     
+    
+    
 
-    async VNPayReturn(req, res, next, userId) {
+    async VNPayReturn(req, res, next) {
         try {
             let vnp_Params = req.query;    
             let secureHash = vnp_Params['vnp_SecureHash'];
-    
             delete vnp_Params['vnp_SecureHash'];
             delete vnp_Params['vnp_SecureHashType'];
     
@@ -202,28 +206,18 @@ class PaymentService {
             let crypto = require("crypto");
             let hmac = crypto.createHmac("sha512", secretKey);
             let signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
-        
+            let responseData = {};
+    
             if (secureHash === signed) {
                 let responseData = {};
                 if (vnp_Params['vnp_ResponseCode'] === '00') {
                     let payment = await PaymentModel.findOneAndUpdate({ orderId: vnp_Params['vnp_TxnRef'] }, { transactionStatus: 'Success' });
-    
-                    // Update user's role based on the payment amount
-                    // const amount = parseFloat(vnp_Params['vnp_Amount']);
-                    // let role = '';
-                    // if (amount === 10000000) {
-                    //     role = 'member-basic';
-                    // } else if (amount === 20000000) {
-                    //     role = 'member-fullservice';
-                    // }
-                    // if (role) {
-                    const user = await UserModel.findOneAndUpdate({ userId: userId }, { role: 'member-basic' });
-                    console.log("User role updated:", user);
-                    console.log("Received user ID:", userId);
-
-                    // }
-    
-                    // console.log("Payment successful. Updated transaction:", payment);
+                    // console.log(payment.userId)
+                    const servicePack = await ServicePackModel.findOne({ amount: payment.vnp_Amount });
+                    const user = await UserModel.findOneAndUpdate({ _id: payment.userId }, { servicePack: servicePack._id });
+                    // console.log(user);
+                    // console.log(servicePack.role)
+  
                     responseData = {
                         success: true,
                         message: 'Payment successful',
@@ -231,17 +225,14 @@ class PaymentService {
                     };
                 } else if (vnp_Params['vnp_ResponseCode'] === '24') {
                     let payment = await PaymentModel.findOneAndUpdate({ orderId: vnp_Params['vnp_TxnRef'] }, { transactionStatus: 'Failed' });
-                    // console.log("Payment canceled. Updated transaction:", payment);
                     responseData = {
                         success: false,
                         message: 'Payment canceled by user',
                         code: vnp_Params['vnp_ResponseCode']
                     };
                 }
-                // console.log("Sending response:", responseData);
-                return responseData; // Return response instead of directly sending it
+                return responseData;
             } else {
-                // Secure hash mismatch
                 console.log("Secure hash mismatch");
                 return {
                     success: false,
@@ -251,11 +242,9 @@ class PaymentService {
             }
         } catch (error) {
             console.error("Error occurred:", error);
-            throw error; // Re-throw the error for proper error handling in the controller
+            throw error;
         }
     }
-    
-    
 }    
 function sortObject(obj) {
     let sorted = {};

@@ -56,13 +56,24 @@ const users = new Schema({
     role: {
         type: String,
         required: true,
-        enum: ['user', 'admin', 'member-basic', 'member-fullservice'],
+        enum: ['user', 'admin'],
         default: 'user'
+    },
+    servicePack: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ServicePacks',
+        required: true,
     },
     timestamp: {
         type: Date,
         default: Date.now
     }
+});
+
+users.pre('findOne', async function (docs, next) {
+    this.populate({
+        path: "servicePack"
+    })
 });
 users.plugin(paginate);
 users.post('findOne', async function (doc, next) {
