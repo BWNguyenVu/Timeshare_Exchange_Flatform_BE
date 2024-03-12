@@ -62,7 +62,7 @@ const users = new Schema({
     servicePack: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'ServicePacks',
-        required: true,
+        required: false,
     },
     timestamp: {
         type: Date,
