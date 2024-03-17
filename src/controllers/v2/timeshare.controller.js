@@ -15,6 +15,7 @@ class Timeshares {
 
     async GetPost(req, res, next){
         const filter = query(req.query, ['resort', 'current_owner']);
+        filter.deleted = { $ne: true };
         const options = query(req.query, ['page']);
         const results = await timeshareServices.QueryPost(filter, options);
         res.status(StatusCodes.OK).json({
