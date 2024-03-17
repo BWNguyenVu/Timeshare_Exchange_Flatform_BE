@@ -68,14 +68,13 @@ class TimeshareService {
     //     console.log(findReservationExisted)
     //     next();
     // }
-    async DeleteTimeshare(timeshareId, mytimeshareId) {
+    async DeleteTimeshare(timeshareId, myTimeshareId) {
         try {
-        const exchangeExists = await ExchangeModel.exists({ $or: [{ timeshareId}, { mytimeshareId }] });
+        const exchangeExists = await ExchangeModel.exists({ $or: [{ timeshareId}, { myTimeshareId }] });
         const reservationExists = await ReservationModel.exists({ timeshareId});
                 if (exchangeExists || reservationExists) {
             return false;
         }
-        console.log(timeshareId)
         const deleteTimeshare = await TimeshareModel.delete({_id: timeshareId});
         return deleteTimeshare;
         }catch {

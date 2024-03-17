@@ -132,10 +132,10 @@ class Timeshares {
     async DeleteTimeshare(req, res, next) {
         try {
             const { timeshareId } = req.params;
-            const { mytimeshareId } = req.body;
+            const { myTimeshareId } = req.body;
 
 
-            const deleteTimeshare = await timeshareServices.DeleteTimeshare(timeshareId, mytimeshareId);
+            const deleteTimeshare = await timeshareServices.DeleteTimeshare(timeshareId, myTimeshareId);
             res.status(StatusCodes.OK).json({
                 status: {
                     code: res.statusCode,
